@@ -1,11 +1,20 @@
 package com.app.taller04.model;
 
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import java.util.ArrayList;
 import java.util.List;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 
 @Entity
@@ -55,9 +64,31 @@ this.rol = rol;
 }
 
 
+
 public Long getId() { return id; }
 public void setId(Long id) { this.id = id; }
 
 
 public String getNombre() { return nombre; }
+public void setNombre(String nombre) { this.nombre = nombre; }
+
+
+public String getApellido() { return apellido; }
+public void setApellido(String apellido) { this.apellido = apellido; }
+
+
+public String getCorreo() { return correo; }
+public void setCorreo(String correo) { this.correo = correo; }
+
+
+public String getRol() { return rol; }
+public void setRol(String rol) { this.rol = rol; }
+
+
+public List<Nota> getNotasComoProfesor() { return notasComoProfesor; }
+public void setNotasComoProfesor(List<Nota> notasComoProfesor) { this.notasComoProfesor = notasComoProfesor; }
+
+
+public List<Nota> getNotasComoEstudiante() { return notasComoEstudiante; }
+public void setNotasComoEstudiante(List<Nota> notasComoEstudiante) { this.notasComoEstudiante = notasComoEstudiante; }
 }

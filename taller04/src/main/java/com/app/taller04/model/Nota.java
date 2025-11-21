@@ -1,11 +1,19 @@
 package com.app.taller04.model;
 
 
-import jakarta.persistence.*;
+import java.math.BigDecimal;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
 
 
 @Entity
@@ -63,6 +71,7 @@ this.porcentaje = porcentaje;
 }
 
 
+
 public Integer getId() { return id; }
 public void setId(Integer id) { this.id = id; }
 
@@ -71,4 +80,22 @@ public Materia getMateria() { return materia; }
 public void setMateria(Materia materia) { this.materia = materia; }
 
 
+public Usuario getProfesor() { return profesor; }
+public void setProfesor(Usuario profesor) { this.profesor = profesor; }
+
+
+public Usuario getEstudiante() { return estudiante; }
+public void setEstudiante(Usuario estudiante) { this.estudiante = estudiante; }
+
+
+public String getObservacion() { return observacion; }
+public void setObservacion(String observacion) { this.observacion = observacion; }
+
+
+public BigDecimal getValor() { return valor; }
+public void setValor(BigDecimal valor) { this.valor = valor; }
+
+
+public BigDecimal getPorcentaje() { return porcentaje; }
+public void setPorcentaje(BigDecimal porcentaje) { this.porcentaje = porcentaje; }
 }
