@@ -2,6 +2,7 @@ package com.app.taller04.controller;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.app.taller04.model.Materia;
+import com.app.taller04.model.Usuario;
 import com.app.taller04.service.MateriaService;
+import com.app.taller04.service.UsuarioService;
 
 import jakarta.validation.Valid;
 
@@ -22,7 +25,8 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/materias")
 public class MateriaController {
     private final MateriaService service;
-    public MateriaController(MateriaService service) { this.service = service; }
+    private final UsuarioService usuarioService;
+    public MateriaController(MateriaService service, UsuarioService usuarioService) { this.service = service; this.usuarioService = usuarioService; }
 
     @GetMapping
     public List<Materia> listar() { return service.listar(); }
@@ -50,4 +54,20 @@ public class MateriaController {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/matricular")
+public ResponseEntity<?> matricular(@PathVariable Integer id, @RequestBody Map<String,Long> body) {
+    Long estudianteId = body.get("estudianteId");
+    Materia materia = service.obtener(id).orElse(null);
+    if (materia == null) return ResponseEntity.notFound().build();
+    Usuario usuario = usuarioService.obtener(estudianteId).orElse(null);
+    if (usuario == null) return ResponseEntity.badRequest().body("Estudiante no encontrado");
+    // evitar duplicados
+    if (materia.getEstudiantes().stream().anyMatch(e -> e.getId().equals(estudianteId))) {
+        return ResponseEntity.badRequest().body("Estudiante ya matriculado");
+    }
+    materia.getEstudiantes().add(usuario);
+    service.crear(materia); // o repo.save
+    return ResponseEntity.ok(materia);
+}
 }

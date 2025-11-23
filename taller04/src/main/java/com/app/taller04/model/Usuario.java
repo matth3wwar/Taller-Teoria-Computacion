@@ -3,12 +3,15 @@ package com.app.taller04.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -39,6 +42,11 @@ public class Usuario {
     @NotBlank
     private String rol;
 
+    
+    @JsonIgnore
+    @NotBlank
+    private String password; // BCrypt hashed
+
     // Relaciones inversas opcionales (no necesarias, pero útil)
     @OneToMany(mappedBy = "profesor", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Nota> notasComoProfesor = new ArrayList<>();
@@ -46,10 +54,22 @@ public class Usuario {
     @OneToMany(mappedBy = "estudiante", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Nota> notasComoEstudiante = new ArrayList<>();
 
+    // ManyToMany: materias como estudiante
+    @ManyToMany(mappedBy = "estudiantes")
+    private List<Materia> materias = new ArrayList<>();
+
+    public List<Materia> getMaterias() {
+        return materias;
+    }
+
+    public void setMaterias(List<Materia> materias) {
+        this.materias = materias;
+    }
+
     public Usuario() {}
 
-    public Usuario(String nombre, String apellido, String correo, String rol) {
-        this.nombre = nombre; this.apellido = apellido; this.correo = correo; this.rol = rol;
+    public Usuario(String nombre, String apellido, String correo, String rol, String password) {
+        this.nombre = nombre; this.apellido = apellido; this.correo = correo; this.rol = rol; this.password = password;
     }
 
     // getters y setters
@@ -73,4 +93,8 @@ public class Usuario {
 
     public List<Nota> getNotasComoEstudiante() { return notasComoEstudiante; }
     public void setNotasComoEstudiante(List<Nota> notasComoEstudiante) { this.notasComoEstudiante = notasComoEstudiante; }
+
+    public String getPassword() { return password; }
+
+    public void setPassword(String password) { this.password = password;}
 }
