@@ -56,18 +56,18 @@ public class MateriaController {
     }
 
     @PostMapping("/{id}/matricular")
-public ResponseEntity<?> matricular(@PathVariable Integer id, @RequestBody Map<String,Long> body) {
-    Long estudianteId = body.get("estudianteId");
-    Materia materia = service.obtener(id).orElse(null);
-    if (materia == null) return ResponseEntity.notFound().build();
-    Usuario usuario = usuarioService.obtener(estudianteId).orElse(null);
-    if (usuario == null) return ResponseEntity.badRequest().body("Estudiante no encontrado");
-    // evitar duplicados
-    if (materia.getEstudiantes().stream().anyMatch(e -> e.getId().equals(estudianteId))) {
-        return ResponseEntity.badRequest().body("Estudiante ya matriculado");
+    public ResponseEntity<?> matricular(@PathVariable Integer id, @RequestBody Map<String,Long> body) {
+        Long estudianteId = body.get("estudianteId");
+        Materia materia = service.obtener(id).orElse(null);
+        if (materia == null) return ResponseEntity.notFound().build();
+        Usuario usuario = usuarioService.obtener(estudianteId).orElse(null);
+        if (usuario == null) return ResponseEntity.badRequest().body("Estudiante no encontrado");
+        // evitar duplicados
+        if (materia.getEstudiantes().stream().anyMatch(e -> e.getId().equals(estudianteId))) {
+            return ResponseEntity.badRequest().body("Estudiante ya matriculado");
+        }
+        materia.getEstudiantes().add(usuario);
+        service.crear(materia); // o repo.save
+        return ResponseEntity.ok(materia);
     }
-    materia.getEstudiantes().add(usuario);
-    service.crear(materia); // o repo.save
-    return ResponseEntity.ok(materia);
-}
 }
