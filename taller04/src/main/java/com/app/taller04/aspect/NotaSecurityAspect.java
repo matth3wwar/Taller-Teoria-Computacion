@@ -1,34 +1,32 @@
 package com.app.taller04.aspect;
 
+import com.app.taller04.dto.NotaResponseDTO;
 import com.app.taller04.model.Nota;
-import com.app.taller04.repository.NotaRepository;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.*;
 import org.slf4j.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Aspecto que intercepta llamadas al controller de Notas y aplica políticas:
- * - ALUMNO: sólo GET y sólo sus propias notas
- * - PROFESOR: todas las operaciones permitidas
+ * Aspecto de seguridad para endpoints de notas.
+ * Ahora soporta respuestas que sean:
+ *  - Nota
+ *  - List<Nota>
+ *  - NotaResponseDTO
+ *  - List<NotaResponseDTO>
+ *  - ResponseEntity<...> que envuelva cualquiera de los anteriores
  *
- * Usa cabeceras X-User-Id y X-User-Role para determinar identidad/rol (simulación).
+ * Filtra las listas y valida accesos para ALUMNO y permite todo para PROFESOR.
  */
 @Aspect
 @Component
 public class NotaSecurityAspect {
-
     private static final Logger logger = LoggerFactory.getLogger(NotaSecurityAspect.class);
-    private final NotaRepository notaRepo;
 
-    public NotaSecurityAspect(NotaRepository notaRepo) {
-        this.notaRepo = notaRepo;
-    }
-
-    // Pointcut para todos los métodos de NotaController
     @Pointcut("within(com.app.taller04.controller.NotaController)")
     public void notasControllerMethods() {}
 
@@ -42,92 +40,102 @@ public class NotaSecurityAspect {
         String role = optRole.orElse("ANONYMOUS");
         Long userId = optUserId.orElse(null);
 
-        // Logging base
         logger.debug("NotaSecurityAspect: userId={}, role={}, method={}, path={}", userId, role, method, path);
 
-        // If role is PROFESSOR -> allow everything
-        if ("PROFESOR".equals(role)) {
+        if ("PROFESOR".equalsIgnoreCase(role)) {
             return pjp.proceed();
         }
 
-        // If role is ALUMNO -> restrictions
-        if ("ALUMNO".equals(role)) {
-            // Allow only GET requests
+        if ("ALUMNO".equalsIgnoreCase(role)) {
             if (!"GET".equalsIgnoreCase(method)) {
                 String msg = String.format("Acceso denegado: usuario %s con rol ALUMNO intentó %s %s", userId, method, path);
                 logger.warn(msg);
                 throw new SecurityViolationException(msg);
             }
 
-            // It's a GET: we must ensure they only access their own notes
             Object result = pjp.proceed();
 
-            // Cases:
-            // - If controller returned a List<Nota> -> filter to only notes of this student
-            if (result instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<Nota> list = (List<Nota>) result;
-                List<Nota> filtered = list.stream()
-                        .filter(n -> n.getEstudiante() != null && userId != null && userId.equals(n.getEstudiante().getId()))
-                        .collect(Collectors.toList());
-                return filtered;
+            // Si el resultado es ResponseEntity, extraer/posponer wrapping
+            if (result instanceof ResponseEntity) {
+                ResponseEntity<?> resp = (ResponseEntity<?>) result;
+                Object body = resp.getBody();
+                Object filteredBody = filterBodyForAlumno(body, userId);
+                return ResponseEntity.status(resp.getStatusCode()).headers(resp.getHeaders()).body(filteredBody);
             }
 
-            // - If controller returned a single Nota -> allow only if estudiante.id == userId
-            if (result instanceof Nota) {
-                Nota nota = (Nota) result;
-                if (nota == null) return null;
-                if (nota.getEstudiante() != null && userId != null && userId.equals(nota.getEstudiante().getId())) {
-                    return nota;
-                } else {
-                    String msg = String.format("Acceso denegado: usuario %s intentó ver nota %s que no le pertenece", userId, nota.getId());
-                    logger.warn(msg);
-                    throw new SecurityViolationException(msg);
-                }
-            }
-
-            // - If controller returned ResponseEntity<?> or other wrapper, try to handle common cases:
-            // We handle common pattern ResponseEntity<Nota> / ResponseEntity<List<Nota>>
-            // We attempt to extract payload reflectively (best-effort). If extraction fails, deny access.
-            try {
-                // Best-effort: reflectively unwrap getBody() if present
-                java.lang.reflect.Method m = result.getClass().getMethod("getBody");
-                Object body = m.invoke(result);
-                if (body instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<Nota> list = (List<Nota>) body;
-                    List<Nota> filtered = list.stream()
-                            .filter(n -> n.getEstudiante() != null && userId != null && userId.equals(n.getEstudiante().getId()))
-                            .collect(Collectors.toList());
-                    // Re-wrap in same ResponseEntity type if possible by calling ResponseEntity.ok(filtered)
-                    return org.springframework.http.ResponseEntity.ok(filtered);
-                } else if (body instanceof Nota) {
-                    Nota nota = (Nota) body;
-                    if (nota.getEstudiante() != null && userId != null && userId.equals(nota.getEstudiante().getId())) {
-                        return result;
-                    } else {
-                        String msg = String.format("Acceso denegado: usuario %s intentó ver nota %s que no le pertenece", userId, nota.getId());
-                        logger.warn(msg);
-                        throw new SecurityViolationException(msg);
-                    }
-                }
-            } catch (NoSuchMethodException ignored) {
-                // not a ResponseEntity-like return — ignore
-            } catch (Exception ex) {
-                // reflection error: log and deny (fail safe)
-                logger.warn("Error procesando respuesta en aspecto de seguridad: {}", ex.getMessage());
-                throw new SecurityViolationException("Acceso denegado (error de procesamiento)");
-            }
-
-            // If we reached here and we couldn't decide, be restrictivo (deny)
-            String msg = String.format("Acceso denegado: usuario %s con rol ALUMNO intentó acceder a %s %s", userId, method, path);
-            logger.warn(msg);
-            throw new SecurityViolationException(msg);
+            // Si el resultado es directamente una lista o una nota o DTO
+            Object filtered = filterBodyForAlumno(result, userId);
+            return filtered;
         }
 
-        // Default policy: deny and log
         String msg = String.format("Acceso denegado: usuario %s con rol %s no permitido en %s %s", userId, role, method, path);
         logger.warn(msg);
         throw new SecurityViolationException(msg);
+    }
+
+    /**
+     * Filtra el body retornado para ALUMNO. Devuelve:
+     * - Si body es List<Nota> o List<NotaResponseDTO> -> lista filtrada por estudianteId == userId
+     * - Si body es Nota o NotaResponseDTO -> devuelve solo si pertenece al usuario; si no, lanza SecurityViolationException
+     * - Si body es null -> devuelve null
+     * - Para otros tipos devuelve body tal cual (no esperado)
+     */
+    @SuppressWarnings("unchecked")
+    private Object filterBodyForAlumno(Object body, Long userId) {
+        if (body == null) return null;
+
+        // 1) List handling
+        if (body instanceof List) {
+            List<?> list = (List<?>) body;
+            if (list.isEmpty()) return Collections.emptyList();
+
+            Object first = list.get(0);
+
+            // List<Nota>
+            if (first instanceof Nota) {
+                List<Nota> notas = (List<Nota>) list;
+                return notas.stream()
+                        .filter(n -> n.getEstudiante() != null && userId != null && userId.equals(n.getEstudiante().getId()))
+                        .collect(Collectors.toList());
+            }
+
+            // List<NotaResponseDTO>
+            if (first instanceof NotaResponseDTO) {
+                List<NotaResponseDTO> dtos = (List<NotaResponseDTO>) list;
+                return dtos.stream()
+                        .filter(n -> n.getEstudianteId() != null && userId != null && userId.equals(n.getEstudianteId()))
+                        .collect(Collectors.toList());
+            }
+
+            // Si lista de otro tipo, la devolvemos (no esperado)
+            return list;
+        }
+
+        // 2) Single Nota
+        if (body instanceof Nota) {
+            Nota n = (Nota) body;
+            if (n.getEstudiante() != null && userId != null && userId.equals(n.getEstudiante().getId())) {
+                return n;
+            } else {
+                String msg = String.format("Acceso denegado: usuario %s intentó ver nota %s que no le pertenece", userId, n.getId());
+                logger.warn(msg);
+                throw new SecurityViolationException(msg);
+            }
+        }
+
+        // 3) Single NotaResponseDTO
+        if (body instanceof NotaResponseDTO) {
+            NotaResponseDTO dto = (NotaResponseDTO) body;
+            if (dto.getEstudianteId() != null && userId != null && userId.equals(dto.getEstudianteId())) {
+                return dto;
+            } else {
+                String msg = String.format("Acceso denegado: usuario %s intentó ver nota %s que no le pertenece", userId, dto.getId());
+                logger.warn(msg);
+                throw new SecurityViolationException(msg);
+            }
+        }
+
+        // 4) Other types - return as-is
+        return body;
     }
 }
