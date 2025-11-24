@@ -1,20 +1,11 @@
 package com.app.taller04.model;
 
-import java.math.BigDecimal;
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "nota")
@@ -24,19 +15,25 @@ public class Nota {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @JsonBackReference
-    @ManyToOne(optional = false)
+    /**
+     * Materia es la referencia "padre" en la relación nota -> materia.
+     * @JsonBackReference evita serialización recursiva cuando Materia usa JsonManagedReference
+     * (en este proyecto se usa @JsonIgnore en Materia.notas, así se evita ciclo también).
+     */
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "materia_id", nullable = false)
+    @JsonBackReference
     private Materia materia;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "profesor_id", nullable = false)
     private Usuario profesor;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "estudiante_id", nullable = false)
     private Usuario estudiante;
 
+    @Column(length = 500)
     private String observacion;
 
     @NotNull
@@ -53,17 +50,6 @@ public class Nota {
 
     public Nota() {}
 
-    public Nota(Materia materia, Usuario profesor, Usuario estudiante,
-                String observacion, BigDecimal valor, BigDecimal porcentaje) {
-        this.materia = materia;
-        this.profesor = profesor;
-        this.estudiante = estudiante;
-        this.observacion = observacion;
-        this.valor = valor;
-        this.porcentaje = porcentaje;
-    }
-
-    // getters y setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 

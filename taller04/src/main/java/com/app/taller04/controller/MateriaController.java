@@ -56,18 +56,14 @@ public class MateriaController {
     }
 
     @PostMapping("/{id}/matricular")
-    public ResponseEntity<?> matricular(@PathVariable Integer id, @RequestBody Map<String,Long> body) {
+    public ResponseEntity<?> matricular(@PathVariable Integer id, @RequestBody Map<String, Long> body) {
         Long estudianteId = body.get("estudianteId");
-        Materia materia = service.obtener(id).orElse(null);
-        if (materia == null) return ResponseEntity.notFound().build();
-        Usuario usuario = usuarioService.obtener(estudianteId).orElse(null);
-        if (usuario == null) return ResponseEntity.badRequest().body("Estudiante no encontrado");
-        // evitar duplicados
-        if (materia.getEstudiantes().stream().anyMatch(e -> e.getId().equals(estudianteId))) {
-            return ResponseEntity.badRequest().body("Estudiante ya matriculado");
+        if (estudianteId == null) return ResponseEntity.badRequest().body(Map.of("error","estudianteId requerido"));
+        try {
+            Materia updated = service.matricular(id, estudianteId);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
-        materia.getEstudiantes().add(usuario);
-        service.crear(materia); // o repo.save
-        return ResponseEntity.ok(materia);
     }
 }

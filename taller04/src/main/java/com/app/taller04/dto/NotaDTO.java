@@ -1,12 +1,14 @@
 package com.app.taller04.dto;
 
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
-
+/**
+ * DTO de entrada para crear/actualizar notas.
+ * Contiene solo ids y valores primitivos para evitar deserialización de objetos JPA anidados.
+ */
 public class NotaDTO {
+
     @NotNull
     private Integer materiaId;
 
@@ -28,7 +30,6 @@ public class NotaDTO {
     @DecimalMax("100.00")
     private BigDecimal porcentaje;
 
-    // getters y setters
     public Integer getMateriaId() { return materiaId; }
     public void setMateriaId(Integer materiaId) { this.materiaId = materiaId; }
 
@@ -41,9 +42,9 @@ public class NotaDTO {
     public String getObservacion() { return observacion; }
     public void setObservacion(String observacion) { this.observacion = observacion; }
 
-    public java.math.BigDecimal getValor() { return valor; }
-    public void setValor(java.math.BigDecimal valor) { this.valor = valor; }
+    public BigDecimal getValor() { return valor; }
+    public void setValor(BigDecimal valor) { this.valor = valor; }
 
-    public java.math.BigDecimal getPorcentaje() { return porcentaje; }
-    public void setPorcentaje(java.math.BigDecimal porcentaje) { this.porcentaje = porcentaje; }
+    public BigDecimal getPorcentaje() { return porcentaje; }
+    public void setPorcentaje(BigDecimal porcentaje) { this.porcentaje = porcentaje; }
 }
