@@ -2,9 +2,9 @@ package com.app.taller04;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+//import org.springframework.context.annotation.Bean;
+//import org.springframework.web.servlet.config.annotation.CorsRegistry;
+//import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @SpringBootApplication
 public class Taller04Application {
@@ -12,7 +12,7 @@ public class Taller04Application {
 	public static void main(String[] args) {
 		SpringApplication.run(Taller04Application.class, args);
 	}
-
+	/* 
 	@Bean
 	public WebMvcConfigurer corsConfigurer() {
 		return new WebMvcConfigurer() {
@@ -24,7 +24,5 @@ public class Taller04Application {
 					.allowedHeaders("*");
 			}
 		};
-	}
-
-
+	}*/
 }
